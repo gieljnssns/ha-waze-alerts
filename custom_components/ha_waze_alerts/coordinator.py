@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for integration_blueprint."""
+"""DataUpdateCoordinator for ha-waze-alerts."""
 
 from __future__ import annotations
 

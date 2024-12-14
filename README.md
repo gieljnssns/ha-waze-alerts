@@ -45,3 +45,8 @@ These are some next steps you may want to look into:
 - Create your first release.
 - Share your integration on the [Home Assistant Forum](https://community.home-assistant.io/).
 - Submit your integration to [HACS](https://hacs.xyz/docs/publish/start).
+
+
+
+
+https://support.google.com/waze/partners/answer/13458165?hl=en#zippy=%2Ctraffic-alerts%2Cdata-elements%2Cjson%2Calert-types
