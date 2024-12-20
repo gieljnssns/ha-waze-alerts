@@ -1,57 +1,101 @@
-"""Sensor platform for ha-waze-alerts."""
+"""Sensor platform for Waze Alerts."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import logging
+from typing import TYPE_CHECKING, Any
 
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.components.sensor import SensorEntity
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .entity import IntegrationBlueprintEntity
+from .const import CONF_CATEGORY, DOMAIN
+from .coordinator import WazeAlertsCoordinator
 
 if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
+    from homeassistant.config_entries import ConfigEntry
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-    from .coordinator import BlueprintDataUpdateCoordinator
-    from .data import IntegrationBlueprintConfigEntry
-
-ENTITY_DESCRIPTIONS = (
-    SensorEntityDescription(
-        key="ha_waze_alerts",
-        name="Integration Sensor",
-        icon="mdi:format-quote-close",
-    ),
-)
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,  # noqa: ARG001 Unused function argument: `hass`
-    entry: IntegrationBlueprintConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up the sensor platform."""
-    async_add_entities(
-        IntegrationBlueprintSensor(
-            coordinator=entry.runtime_data.coordinator,
-            entity_description=entity_description,
-        )
-        for entity_description in ENTITY_DESCRIPTIONS
-    )
+    """Setup sensors for each category."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    categories = entry.options.get(CONF_CATEGORY, [])
+    if coordinator.data is None:
+        coordinator.data = {"alerts": []}
+    sensors = [
+        WazeAlertsSensor(coordinator, entry, category) for category in categories
+    ]
+
+    async_add_entities(sensors)
 
 
-class IntegrationBlueprintSensor(IntegrationBlueprintEntity, SensorEntity):
-    """ha-waze-alerts Sensor class."""
+class WazeAlertsSensor(CoordinatorEntity[WazeAlertsCoordinator], SensorEntity):
+    """Sensor for a specific category."""
 
     def __init__(
         self,
-        coordinator: BlueprintDataUpdateCoordinator,
-        entity_description: SensorEntityDescription,
+        coordinator: WazeAlertsCoordinator,
+        config_entry: ConfigEntry,
+        category: str,
     ) -> None:
-        """Initialize the sensor class."""
         super().__init__(coordinator)
-        self.entity_description = entity_description
+        self.config_entry = config_entry
+        self._state = 0
+        self._attributes = {}
+        self._category = category
+        self._alerts = []
 
     @property
-    def native_value(self) -> str | None:
-        """Return the native value of the sensor."""
-        return self.coordinator.data.get("body")
+    def unique_id(self) -> str:
+        """Een unieke ID voor de sensor."""
+        return f"{self.coordinator.config_entry.entry_id}_sensor_{self._category}"
+
+    async def async_added_to_hass(self) -> None:
+        """Register callbacks."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self._handle_coordinator_update)
+        )
+
+    @property
+    def name(self) -> str:
+        return f"Waze Alerts - {self._category}"
+
+    @property
+    def state(self):
+        return self._state
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        data = self.coordinator.data.get("alerts", [])
+        if not data:
+            return
+
+        # Filter alerts by the configured category
+        filtered_alerts = [
+            alert for alert in data if alert.get("type") == self._category
+        ]
+
+        self._state = len(filtered_alerts)
+        self._alerts = filtered_alerts
+        self.async_write_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return additional attributes for the sensor."""
+        return {
+            "alerts": [
+                {
+                    "latitude": alert.get("location", {}).get("y"),
+                    "longitude": alert.get("location", {}).get("x"),
+                    "description": alert.get("subtype"),
+                }
+                for alert in self._alerts
+            ]
+        }

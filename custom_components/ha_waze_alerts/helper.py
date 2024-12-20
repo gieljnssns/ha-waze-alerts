@@ -1,28 +1,18 @@
-import aiohttp
-import logging
-_LOGGER = logging.getLogger(__name__)
-async def send_location_to_api(hass, lat, lon, radius, categories):
-    """Send location to external API."""
-    url = "https://example.com/api"
-    payload = {
-        "latitude": lat,
-        "longitude": lon,
-        "radius": radius,
-        "categories": categories,
-    }
+"""Helper for Waze alerts."""
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, json=payload) as response:
-            if response.status == 200:
-                data = await response.json()
-                _LOGGER.info(f"API response: {data}")
-                # Verwerk en haal coördinaten uit de relevante categorieën
-                coordinates = [
-                    (item["latitude"], item["longitude"])
-                    for item in data.get("results", [])
-                    if item["category"] in categories
-                ]
-                _LOGGER.info(f"Relevant coordinates: {coordinates}")
-                # Opslaan of doorgeven aan een entiteit
-            else:
-                _LOGGER.error(f"API error: {response.status}")
+import logging
+from math import cos, radians
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def calculate_bounding_box(latitude, longitude, radius):
+    # Haversine-formule voor een bounding box
+    radius_km = radius / 1000
+    lat_diff = radius_km / 111  # 111 km per graad latitude
+    lon_diff = radius_km / (111 * cos(radians(latitude)))
+    top = latitude + lat_diff
+    bottom = latitude - lat_diff
+    left = longitude - lon_diff
+    right = longitude + lon_diff
+    return top, bottom, left, right

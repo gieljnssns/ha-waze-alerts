@@ -2,66 +2,45 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+import logging
 
-from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
+from homeassistant.components.switch import SwitchEntity
 
-from .entity import IntegrationBlueprintEntity
+from .const import DOMAIN
 
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
-    from .coordinator import BlueprintDataUpdateCoordinator
-    from .data import IntegrationBlueprintConfigEntry
-
-ENTITY_DESCRIPTIONS = (
-    SwitchEntityDescription(
-        key="ha_waze_alerts",
-        name="Integration Switch",
-        icon="mdi:format-quote-close",
-    ),
-)
+_LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,  # noqa: ARG001 Unused function argument: `hass`
-    entry: IntegrationBlueprintConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up the switch platform."""
-    async_add_entities(
-        IntegrationBlueprintSwitch(
-            coordinator=entry.runtime_data.coordinator,
-            entity_description=entity_description,
-        )
-        for entity_description in ENTITY_DESCRIPTIONS
-    )
+async def async_setup_entry(hass, config_entry, async_add_entities) -> None:
+    """Setup de switch."""
+    data = hass.data[DOMAIN][config_entry.entry_id]
+    async_add_entities([WazeAlertsSwitch(data)])
 
 
-class IntegrationBlueprintSwitch(IntegrationBlueprintEntity, SwitchEntity):
-    """ha-waze-alerts switch class."""
+class WazeAlertsSwitch(SwitchEntity):
+    """Switch to enable or disable tracking."""
 
-    def __init__(
-        self,
-        coordinator: BlueprintDataUpdateCoordinator,
-        entity_description: SwitchEntityDescription,
-    ) -> None:
-        """Initialize the switch class."""
-        super().__init__(coordinator)
-        self.entity_description = entity_description
+    def __init__(self, data) -> None:
+        self._data = data
+        self._is_on = data["enabled"]
 
     @property
-    def is_on(self) -> bool:
-        """Return true if the switch is on."""
-        return self.coordinator.data.get("title", "") == "foo"
+    def unique_id(self):
+        """Een unieke ID voor de switch."""
+        return f"{self._data['coordinator'].config_entry.entry_id}_switch"
 
-    async def async_turn_on(self, **_: Any) -> None:
-        """Turn on the switch."""
-        await self.coordinator.config_entry.runtime_data.client.async_set_title("bar")
-        await self.coordinator.async_request_refresh()
+    @property
+    def name(self):
+        return "Waze Alerts Tracking"
 
-    async def async_turn_off(self, **_: Any) -> None:
-        """Turn off the switch."""
-        await self.coordinator.config_entry.runtime_data.client.async_set_title("foo")
-        await self.coordinator.async_request_refresh()
+    @property
+    def is_on(self):
+        return self._is_on
+
+    async def async_turn_on(self, **kwargs):
+        self._is_on = True
+        self._data["enabled"] = True
+
+    async def async_turn_off(self, **kwargs):
+        self._is_on = False
+        self._data["enabled"] = False

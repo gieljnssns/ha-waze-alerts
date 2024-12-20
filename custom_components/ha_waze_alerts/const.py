@@ -2,14 +2,15 @@
 
 from logging import Logger, getLogger
 
-import voluptuous as vol
+from homeassistant.const import Platform
 
 LOGGER: Logger = getLogger(__package__)
-
+PLATFORMS = [Platform.GEO_LOCATION, Platform.SENSOR, Platform.SWITCH]
 DOMAIN = "ha_waze_alerts"
-ATTRIBUTION = "Data provided by http://jsonplaceholder.typicode.com/"
-DEFAULT_RADIUS = 1000  # in meters
-
+BASE_URL = "https://www.waze.com/live-map/api/georss"
+DEFAULT_RADIUS = 2500  # in meters
+DEFAULT_CATEGORY = "POLICE"
+CONF_CATEGORY = "category"
 CATEGORIES = [
     "ACCIDENT",
     "JAM",
@@ -19,8 +20,3 @@ CATEGORIES = [
     "CONSTRUCTION",
     "ROAD_CLOSED",
 ]
-
-categories_schema = vol.All(
-    [vol.In(CATEGORIES)],  # Valideer dat elk item in de lijst een geldige categorie is
-    vol.Length(min=1),  # Vereist minimaal 1 selectie
-)

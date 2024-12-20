@@ -2,17 +2,28 @@
     "config": {
         "step": {
             "user": {
-                "description": "If you need help with the configuration have a look here: https://github.com/gieljnssns/ha-waze-alerts",
+                "title": "Device Tracker Configuration",
+                "description": "Select a device tracker that you want to monitor.",
                 "data": {
-                    "username": "Username",
-                    "password": "Password"
+                    "device_tracker": "Select the device tracker to monitor"
+                }
+            },
+            "options":{
+                "step":{
+                    "init": {
+                        "title": "Waze Alerts Options",
+                        "description": "Configure the radius and categories for API filtering.",
+                        "data": {
+                            "radius": "Enter the radius (in meters)",
+                            "monitored_conditions": "Select categories to filter"
+                        }
+                    }
                 }
             }
         },
         "error": {
-            "auth": "Username/Password is wrong.",
-            "connection": "Unable to connect to the server.",
-            "unknown": "Unknown error occurred."
+            "no_device_trackers_available": "No device trackers are available to monitor.",
+            "select_at_least_one": "Please select at least one category."
         }
     }
 }
